@@ -1,11 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Avalonia.Skia.Rendering;
+using Avalonia.Skia;
 using Avalonia.Threading;
+//using Avalonia.Controls.Skia;
 using SkiaSharp;
 using System;
 using System.Diagnostics; // For Debug.WriteLine
@@ -26,8 +26,10 @@ public partial class TrailCanvas : UserControl
     private SKColor _backgroundColor = SKColors.Black;
 
     // Timer for updates
-    private int frameTime = 10;
+    private int frameTime = 30;     // in miliseconds
+    private int trailLength = 20;   // in seconds
     private DispatcherTimer _animationTimer;
+    private SKCanvas canvas;
 
     public TrailCanvas()
     {
@@ -64,6 +66,15 @@ public partial class TrailCanvas : UserControl
         };
         _animationTimer.Tick += AnimationTimer_Tick;
         _animationTimer.Start();
+
+        // calculate alpha Af = 255x(1-(TargetAlpha/InitialAlpha)^(1/N)))
+        byte Af = (byte)Math.Round(255 * Math.Pow(1 - (5.0/255.0), 1 / trailLength), 0, MidpointRounding.AwayFromZero);
+        _trailFadeColor = SKColors.Blue.WithAlpha(Af); // Semi-transparent BLUE (alpha 5)
+
+        // using skiacontrol
+        //var canvas = this.FindControl<SKCanvasControl>("CanvasControl");
+        CanvasControl.Draw += (_, e) => DrawMe(e.Canvas);
+        //CanvasControl.Content = "Hello";
     }
 
     private void InitializeTrailBitmap()
@@ -100,8 +111,14 @@ public partial class TrailCanvas : UserControl
     // Override the Render method to perform custom drawing
     public override void Render(DrawingContext context)
     {
+        //Console.WriteLine("Render Called {0} canvas = {1}", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
         base.Render(context); // Call base implementation
+    }
 
+    private void UpdateCanvas()
+    {
+        if (canvas is null) this.canvas = canvas;
+        if (this.canvas is null) return;
         // Ensure _trailBitmap is initialized and has valid dimensions
         if (_trailBitmap == null || _trailBitmap.Width == 0 || _trailBitmap.Height == 0)
         {
@@ -134,25 +151,14 @@ public partial class TrailCanvas : UserControl
         // --- End Core Trail Logic ---
 
         // 3. Draw the accumulated trail bitmap onto Avalonia's DrawingContext
-        // The correct way to get the ISkiaSharpApiLeaseFeature is directly from the DrawingContext if it's an ISkiaDrawingContext
-        // Or use an extension method depending on Avalonia version.
-        // As of Avalonia 11, the DrawingContext has a TryGetFeature method or can be cast.
-
-        // The simplest and most robust way is to check if it's an ISkiaDrawingContext
-        var skiaFeature = context.PlatformImpl?.Get	   // This extension method comes from Avalonia.Skia.Rendering.DrawingContextImplExtensions
-                                                <ISkiaSharpApiLeaseFeature>();
-        if (context is ISkiaDrawingContext skiaContext)
+        if (canvas != null)
         {
-            using (var lease = skiaContext.Lease())
+            lock(canvas)
             {
-                SKCanvas avaloniaCanvas = lease.SkCanvas;
-                if (avaloniaCanvas != null)
-                {
-                    avaloniaCanvas.DrawBitmap(_trailBitmap,
-                                              new SKRect(0, 0, _trailBitmap.Width, _trailBitmap.Height),
-                                              new SKRect(0, 0, (float)Bounds.Width, (float)Bounds.Height),
-                                              null);
-                }
+                canvas.DrawBitmap(_trailBitmap,
+                        new SKRect(0, 0, _trailBitmap.Width, _trailBitmap.Height),
+                        new SKRect(0, 0, (float)Bounds.Width, (float)Bounds.Height),
+                        null);
             }
         }
         else
@@ -160,6 +166,15 @@ public partial class TrailCanvas : UserControl
             // Fallback or error handling if not using Skia backend or older Avalonia version
             Debug.WriteLine("Warning: Not using Skia backend for drawing context or unsupported Avalonia version.");
         }
+        Console.WriteLine("UpdateCanvas Called {0} canvas = {1}", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
+    }
+
+    private void DrawMe(SKCanvas skCanvas)
+    {
+        if (canvas is null) this.canvas = skCanvas;
+        if (this.canvas is null) return;
+        UpdateCanvas();
+        Console.WriteLine("DrawMe Called {0} canvas = {1}", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
     }
 
     // Proper disposal of the bitmap when the control is no longer used
