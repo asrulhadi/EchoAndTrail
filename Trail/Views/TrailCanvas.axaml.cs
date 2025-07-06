@@ -4,7 +4,8 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-//using Avalonia.Skia; // Important: This namespace provides ICoreBitmap, ISkiaSharpApiLeaseFeature etc.
+using Avalonia.Skia; // Important: This namespace provides ICoreBitmap, ISkiaSharpApiLeaseFeature etc.
+using Avalonia.Skia.Rendering;
 using Avalonia.Threading;
 using SkiaSharp;
 using System;
@@ -134,24 +135,29 @@ public partial class TrailCanvas : UserControl
         // --- End Core Trail Logic ---
 
         // 3. Draw the accumulated trail bitmap onto Avalonia's DrawingContext
-        // We need to get an ISkiaSharpApiLeaseFeature from the DrawingContext
-        var skiaFeature = context.GetFeature<ISkiaSharpApiLeaseFeature>();
-        if (skiaFeature != null)
+        // The correct way to get the ISkiaSharpApiLeaseFeature is directly from the DrawingContext if it's an ISkiaDrawingContext
+        // Or use an extension method depending on Avalonia version.
+        // As of Avalonia 11, the DrawingContext has a TryGetFeature method or can be cast.
+
+        // The simplest and most robust way is to check if it's an ISkiaDrawingContext
+        if (context is ISkiaDrawingContext skiaContext)
         {
-            using (var lease = skiaFeature.Lease())
+            using (var lease = skiaContext.Lease())
             {
                 SKCanvas avaloniaCanvas = lease.SkCanvas;
                 if (avaloniaCanvas != null)
                 {
-                    // Draw the _trailBitmap onto Avalonia's SKCanvas.
-                    // Here, we draw from physical pixels of _trailBitmap to device-independent pixels of Avalonia's canvas.
-                    // SkiaSharp handles the scaling automatically when drawing a bitmap to a canvas with different scaling.
                     avaloniaCanvas.DrawBitmap(_trailBitmap,
-                                                new SKRect(0, 0, _trailBitmap.Width, _trailBitmap.Height), // Source rect from bitmap
-                                                new SKRect(0, 0, (float)Bounds.Width, (float)Bounds.Height), // Destination rect on Avalonia canvas (device-independent)
-                                                null); // SKPaint can be null
+                                              new SKRect(0, 0, _trailBitmap.Width, _trailBitmap.Height),
+                                              new SKRect(0, 0, (float)Bounds.Width, (float)Bounds.Height),
+                                              null);
                 }
             }
+        }
+        else
+        {
+            // Fallback or error handling if not using Skia backend or older Avalonia version
+            Debug.WriteLine("Warning: Not using Skia backend for drawing context or unsupported Avalonia version.");
         }
     }
 
