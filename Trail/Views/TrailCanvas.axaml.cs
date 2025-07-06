@@ -4,7 +4,6 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Avalonia.Skia; // Important: This namespace provides ICoreBitmap, ISkiaSharpApiLeaseFeature etc.
 using Avalonia.Skia.Rendering;
 using Avalonia.Threading;
 using SkiaSharp;
@@ -140,6 +139,8 @@ public partial class TrailCanvas : UserControl
         // As of Avalonia 11, the DrawingContext has a TryGetFeature method or can be cast.
 
         // The simplest and most robust way is to check if it's an ISkiaDrawingContext
+        var skiaFeature = context.PlatformImpl?.Get	   // This extension method comes from Avalonia.Skia.Rendering.DrawingContextImplExtensions
+                                                <ISkiaSharpApiLeaseFeature>();
         if (context is ISkiaDrawingContext skiaContext)
         {
             using (var lease = skiaContext.Lease())
