@@ -4,5 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Trail.Views.TrailCanvas">
-  <SKCanvasControl Name="CanvasControl" />
+  <Panel>
+    <SKCanvasControl Name="TrailSKCanvas" ZIndex="1"/>
+    <SKCanvasControl Name="EchoSKCanvas" ZIndex="2"/>  
+  </Panel>
 </UserControl>
