@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Skia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -8,7 +9,8 @@ using Avalonia.Threading;
 //using Avalonia.Controls.Skia;
 using SkiaSharp;
 using System;
-using System.Diagnostics; // For Debug.WriteLine
+using System.Diagnostics;
+using System.IO; // For Debug.WriteLine
 
 namespace Trail.Views;
 
@@ -26,10 +28,14 @@ public partial class TrailCanvas : UserControl
     private SKColor _backgroundColor = SKColors.Black;
 
     // Timer for updates
-    private int frameTime = 30;     // in miliseconds
+    private int frameTime = 100;     // in miliseconds
     private int trailLength = 20;   // in seconds
     private DispatcherTimer _animationTimer;
     private SKCanvas canvas;
+
+    // New: SKPicture and SKPictureRecorder for recording drawing commands
+    private SKPictureRecorder _pictureRecorder = new();
+    private SKPicture _currentPicture;
 
     public TrailCanvas()
     {
@@ -68,23 +74,21 @@ public partial class TrailCanvas : UserControl
         _animationTimer.Start();
 
         // calculate alpha Af = 255x(1-(TargetAlpha/InitialAlpha)^(1/N)))
-        byte Af = (byte)Math.Round(255 * Math.Pow(1 - (5.0/255.0), 1 / trailLength), 0, MidpointRounding.AwayFromZero);
+        var noOfFrames = trailLength * 1000 / frameTime;
+        var pow = Math.Pow(1 - (5.0 / 255.0), 1.0 / noOfFrames);
+        byte Af = (byte)Math.Round(255 * ( 1 - Math.Pow(5.0/255.0, 1.0 / noOfFrames)), 0, MidpointRounding.AwayFromZero);
         _trailFadeColor = SKColors.Blue.WithAlpha(Af); // Semi-transparent BLUE (alpha 5)
 
         // using skiacontrol
-        //var canvas = this.FindControl<SKCanvasControl>("CanvasControl");
         CanvasControl.Draw += (_, e) => DrawMe(e.Canvas);
-        //CanvasControl.Content = "Hello";
     }
 
     private void InitializeTrailBitmap()
     {
         if (_trailBitmap != null)
         {
-            using (var canvas = new SKCanvas(_trailBitmap))
-            {
-                canvas.Clear(_backgroundColor); // Clear to black background
-            }
+            using var canvas = new SKCanvas(_trailBitmap);
+            canvas.Clear(_backgroundColor); // Clear to black background
         }
     }
 
@@ -92,7 +96,7 @@ public partial class TrailCanvas : UserControl
     {
         if (_trailBitmap == null) return;
 
-        float moveAmount = 10f; // Max pixels to move per step (in device-independent pixels)
+        float moveAmount = 50f; // Max pixels to move per step (in device-independent pixels)
 
         _currentCirclePosition.X += (float)(_random.NextDouble() * 2 - 1) * moveAmount;
         _currentCirclePosition.Y += (float)(_random.NextDouble() * 2 - 1) * moveAmount;
@@ -104,21 +108,45 @@ public partial class TrailCanvas : UserControl
 
     private void AnimationTimer_Tick(object? sender, EventArgs e)
     {
+        Console.WriteLine("{0,12} Called {1} canvas = {2}", "TimerTick", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
         UpdateCirclePosition();
-        InvalidateVisual(); // Request a redraw of this control
+        CanvasControl.InvalidateVisual();   // Request a redraw of this control
     }
 
     // Override the Render method to perform custom drawing
     public override void Render(DrawingContext context)
     {
-        //Console.WriteLine("Render Called {0} canvas = {1}", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
         base.Render(context); // Call base implementation
+        // --- Draw the SKPicture onto Avalonia's DrawingContext ---
+        if (_currentPicture != null)
+        {
+            // 5. Convert the SKBitmap to an Avalonia.Media.Imaging.Bitmap.
+            //    This typically involves saving the SKBitmap to a MemoryStream as a PNG or other format.
+            using var image = SKImage.FromBitmap(_trailBitmap);
+            //using (var image = SKImage.FromPicture(_currentPicture, new SKSizeI((int)_currentPicture.CullRect.Width, (int)_currentPicture.CullRect.Height)))
+
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = new MemoryStream(data.ToArray());
+            var avaloniaBitmap = new Bitmap(stream);
+
+            // 6. Draw the Avalonia Bitmap onto the DrawingContext.
+            //    The second argument is the source rectangle within the bitmap.
+            //    The third argument is the destination rectangle on the DrawingContext.
+            var sourceRect = new Rect(0, 0, avaloniaBitmap.PixelSize.Width, avaloniaBitmap.PixelSize.Height);
+            var destRect = new Rect(0, 0, Bounds.Width, Bounds.Height); // Draw across the whole control
+
+            //context.DrawImage(avaloniaBitmap, sourceRect, destRect);
+            Console.WriteLine("{0,12} Called {1} canvas = {2}", "DrawImage", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
+        }
+        Console.WriteLine("{0,12} Called {1} canvas = {2}", "Render", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
     }
 
     private void UpdateCanvas()
     {
-        if (canvas is null) this.canvas = canvas;
+       this.canvas ??= canvas;
         if (this.canvas is null) return;
+
+
         // Ensure _trailBitmap is initialized and has valid dimensions
         if (_trailBitmap == null || _trailBitmap.Width == 0 || _trailBitmap.Height == 0)
         {
@@ -128,14 +156,13 @@ public partial class TrailCanvas : UserControl
         // --- Core Trail Logic (Applied to _trailBitmap) ---
 
         // 1. Draw the semi-transparent BLUE rectangle over the entire trail bitmap
-        using (var trailCanvas = new SKCanvas(_trailBitmap))
+        using var trailCanvas = new SKCanvas(_trailBitmap);
         using (var fadePaint = new SKPaint { Color = _trailFadeColor, BlendMode = SKBlendMode.SrcOver })
         {
             trailCanvas.DrawRect(0, 0, _trailBitmap.Width, _trailBitmap.Height, fadePaint);
         }
 
         // 2. Draw the new YELLOW circle onto the trail bitmap
-        using (var trailCanvas = new SKCanvas(_trailBitmap))
         using (var circlePaint = new SKPaint { Color = _circleColor, IsAntialias = true, Style = SKPaintStyle.Fill })
         {
             // When drawing to the SKBitmap, the coordinates need to be in physical pixels.
@@ -151,22 +178,8 @@ public partial class TrailCanvas : UserControl
         // --- End Core Trail Logic ---
 
         // 3. Draw the accumulated trail bitmap onto Avalonia's DrawingContext
-        if (canvas != null)
-        {
-            lock(canvas)
-            {
-                canvas.DrawBitmap(_trailBitmap,
-                        new SKRect(0, 0, _trailBitmap.Width, _trailBitmap.Height),
-                        new SKRect(0, 0, (float)Bounds.Width, (float)Bounds.Height),
-                        null);
-            }
-        }
-        else
-        {
-            // Fallback or error handling if not using Skia backend or older Avalonia version
-            Debug.WriteLine("Warning: Not using Skia backend for drawing context or unsupported Avalonia version.");
-        }
-        Console.WriteLine("UpdateCanvas Called {0} canvas = {1}", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
+        canvas.DrawBitmap(_trailBitmap, 0, 0);
+        Console.WriteLine("{0,12} Called {1} canvas = {2}", "UpdateCanvas", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
     }
 
     private void DrawMe(SKCanvas skCanvas)
@@ -174,7 +187,8 @@ public partial class TrailCanvas : UserControl
         if (canvas is null) this.canvas = skCanvas;
         if (this.canvas is null) return;
         UpdateCanvas();
-        Console.WriteLine("DrawMe Called {0} canvas = {1}", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
+        //canvas.DrawPicture(_currentPicture);
+        Console.WriteLine("{0,12} Called {1} canvas = {2}", "DrawMe", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
     }
 
     // Proper disposal of the bitmap when the control is no longer used
@@ -183,6 +197,8 @@ public partial class TrailCanvas : UserControl
         _animationTimer?.Stop(); // Stop the timer
         _trailBitmap?.Dispose();
         _trailBitmap = null;
+        _pictureRecorder?.Dispose(); // Dispose the recorder
+        _currentPicture?.Dispose(); // Dispose any leftover picture
         base.OnDetachedFromVisualTree(e);
     }
 }
