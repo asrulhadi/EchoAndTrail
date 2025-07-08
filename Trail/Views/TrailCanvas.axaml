@@ -4,8 +4,18 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Trail.Views.TrailCanvas">
-  <Panel>
-    <SKCanvasControl Name="TrailSKCanvas" ZIndex="1"/>
-    <SKCanvasControl Name="EchoSKCanvas" ZIndex="2"/>  
-  </Panel>
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Spacing="5">
+      <Border Height="10" />
+      <StackPanel Orientation="Horizontal" Spacing="5">
+        <TextBox>Hello</TextBox>
+        <TextBox>Hello</TextBox>
+        <TextBox>Hello</TextBox>
+      </StackPanel>
+    </StackPanel>
+    <Panel>
+      <SKCanvasControl Name="TrailSKCanvas" ZIndex="1"/>
+      <SKCanvasControl Name="EchoSKCanvas" ZIndex="2"/>  
+    </Panel>
+  </DockPanel>
 </UserControl>
