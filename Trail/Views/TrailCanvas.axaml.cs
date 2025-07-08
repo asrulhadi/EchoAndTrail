@@ -1,12 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Skia;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
+using Avalonia.Skia;
 using Avalonia.Threading;
 using SkiaSharp;
 using System;
-using System.Diagnostics;
-using System.IO; // For Debug.WriteLine
 
 namespace Trail.Views;
 
@@ -25,8 +24,8 @@ public partial class TrailCanvas : UserControl
     private SKColor _fadeToBackgroundColor;
 
     // Timer for updates
-    private int frameTime = 33;     // in miliseconds
-    private int trailLength = 2;   // in seconds
+    private int frameTime = 100;     // in miliseconds
+    private int trailLength = 3;   // in seconds
     private DispatcherTimer _animationTimer;
     private SKCanvas? _trailCanvas;
     private SKCanvas? _echoCanvas;
@@ -81,22 +80,72 @@ public partial class TrailCanvas : UserControl
         _animationTimer.Tick += AnimationTimer_Tick;
         _animationTimer.Start();
 
-        // calculate alpha Af = 255x(1-(TargetAlpha/InitialAlpha)^(1/N)))
-        var noOfFrames = trailLength * 1000 / frameTime;
-        byte Af = (byte)Math.Round(255 * ( 1 - Math.Pow(5.0/255.0, 1.0 / noOfFrames)), 0, MidpointRounding.AwayFromZero);
-        _fadeToBackgroundColor = _backgroundColor.WithAlpha(Af); // Semi-transparent to background (alpha 5)
+        TrailLength.SelectionChanged += (sender, e) =>
+        {
+            if (TrailLength.SelectedItem is ComboBoxItem selectedItem)
+            {
+                if (int.TryParse(selectedItem!.Content!.ToString(), out int newLength))
+                {
+                    trailLength = newLength;
+                    Console.WriteLine("Trail length set to: {0} seconds", trailLength);
+                    UpdateTrailLengthColor();
+                }
+            }
+        };
+        TrailLength.SelectedIndex = 1; // Default to 3 seconds
+
+        BackgroundColor.SelectionChanged += (sender, e) =>
+        {
+            if (BackgroundColor.SelectedItem is ComboBoxItem selectedItem)
+            {
+                if (Color.TryParse(selectedItem!.Content!.ToString(), out Color parsedColor))
+                {
+                    _backgroundColor = parsedColor.ToSKColor();
+                    Console.WriteLine("Background color set to: {0} {1}", _backgroundColor, parsedColor);
+                    UpdateTrailLengthColor();
+                }
+            }
+        };
+        EchoColor.SelectionChanged += (sender, e) =>
+        {
+            if (EchoColor.SelectedItem is ComboBoxItem selectedItem)
+            {
+                if (Color.TryParse(selectedItem!.Content!.ToString(), out Color parsedColor))
+                {
+                    _echoColor = parsedColor.ToSKColor();
+                    Console.WriteLine("Echo color set to: {0} {1}", _echoColor, parsedColor);
+                }
+            }
+        };
+        TrailColor.SelectionChanged += (sender, e) =>
+        {
+            if (TrailColor.SelectedItem is ComboBoxItem selectedItem)
+            {
+                if (Color.TryParse(selectedItem!.Content!.ToString(), out Color parsedColor))
+                {
+                    _trailColor = parsedColor.ToSKColor();
+                    Console.WriteLine("Trail color set to: {0} {1}", _trailColor, parsedColor);
+                }
+            }
+        };
 
         // using skiacontrol
-        TrailSKCanvas.Draw += (_, e) => DrawTrail(e.Canvas);
-        EchoSKCanvas.Draw += (_, e) => DrawEcho(e.Canvas);
+        TrailSKCanvas.Draw += (s, e) => DrawTrail(s, e.Canvas);
+        EchoSKCanvas.Draw += (s, e) => DrawEcho(s, e.Canvas);
+    }
 
-
+    private void UpdateTrailLengthColor()
+    {
+        // calculate alpha Af = 255x(1-(TargetAlpha/InitialAlpha)^(1/N)))
+        var noOfFrames = trailLength * 1000 / frameTime;
+        byte Af = (byte)Math.Round(255 * ( 1 - Math.Pow(1.0/255.0, 1.0 / noOfFrames)), 0, MidpointRounding.AwayFromZero);
+        _fadeToBackgroundColor = _backgroundColor.WithAlpha(Af); // Semi-transparent to background (alpha 5)
     }
 
     private void InitializeTrailBitmap()
     {
-        if (_trailBitmap is {}) new SKCanvas(_trailBitmap).Clear(_backgroundColor);
-        if (_echoBitmap is {} ) new SKCanvas(_echoBitmap).Clear(_backgroundColor);
+        if (_trailBitmap is { }) new SKCanvas(_trailBitmap).Clear(_backgroundColor);
+        if (_echoBitmap is { }) new SKCanvas(_echoBitmap).Clear(_backgroundColor);
     }
 
     private void UpdateCirclePosition()
@@ -113,17 +162,18 @@ public partial class TrailCanvas : UserControl
 
     private void AnimationTimer_Tick(object? sender, EventArgs e)
     {
-        Console.WriteLine("{0,20} Called {1} canvas = {2}", "TimerTick", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode());
+        Console.WriteLine("{0,20} Called {1} canvas = {2} - {3}", "TimerTickA", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode(), _echoCanvas?.GetHashCode());
         UpdateCirclePosition();
         TrailSKCanvas.InvalidateVisual();   // Request a redraw of this control
         EchoSKCanvas.InvalidateVisual();   // Request a redraw of this control
+        Console.WriteLine("{0,20} Called {1} canvas = {2} - {3}", "TimerTickB", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode(), _echoCanvas?.GetHashCode());
     }
 
     // Override the Render method to perform custom drawing
     public override void Render(DrawingContext context)
     {
         base.Render(context); // Call base implementation
-        Console.WriteLine("{0,20} Called {1} canvas = {2}", "Render", DateTime.Now.ToString("mm:ss.fff"), context?.GetHashCode());
+        Console.WriteLine("{0,20} Called {1} context = {2}", "Render", DateTime.Now.ToString("mm:ss.fff"), context?.GetHashCode());
     }
 
     private void UpdateCanvas(SKCanvas? canvas, SKBitmap? bitmap, bool fading, SKColor color)
@@ -165,7 +215,7 @@ public partial class TrailCanvas : UserControl
 
                 drawingCanvas.DrawCircle(scaledX, scaledY, scaledRadius, circlePaint);
             }
-
+            drawingCanvas.Flush(); // Ensure all drawing commands are executed
             // --- End Core Trail Logic ---
 
             // 3. Draw the accumulated trail bitmap onto Avalonia's DrawingContext
@@ -173,27 +223,29 @@ public partial class TrailCanvas : UserControl
             lock (canvasLock)
             {
                 canvas!.DrawBitmap(bitmap, 0, 0);
-                Console.WriteLine("{0,20} Called {1} canvas = {2}", "UpdateCanvas" + (fading ? "Echo" : "Trail"), DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
+                Console.WriteLine("{0,20} Called {1} canvas = {2}", "UpdateCanvas" + (!fading ? "Echo" : "Trail"), DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode());
             }
             Console.WriteLine("{0,20} Called {1} canvas = {2} bitmap = {3}", "LockCanvasB", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode(), bitmap.GetHashCode());
         }
         Console.WriteLine("{0,20} Called {1} canvas = {2} bitmap = {3}", "LockBitmapB", DateTime.Now.ToString("mm:ss.fff"), canvas?.GetHashCode(), bitmap.GetHashCode());
     }
 
-    private void DrawEcho(SKCanvas skCanvas)
+    private void DrawEcho(object? source, SKCanvas canvas)
     {
-        _echoCanvas ??= skCanvas;
+        _echoCanvas ??= canvas;
         if (_echoCanvas is null) return;
+        Console.WriteLine("{0,20} Called {1} canvas = {2} source = {3}", "DrawEchoA", DateTime.Now.ToString("mm:ss.fff"), _echoCanvas?.GetHashCode(), source?.GetType());
         UpdateCanvas(_echoCanvas, _echoBitmap, false, _echoColor);
-        Console.WriteLine("{0,20} Called {1} canvas = {2}", "DrawEcho", DateTime.Now.ToString("mm:ss.fff"), _echoCanvas?.GetHashCode());
+        Console.WriteLine("{0,20} Called {1} canvas = {2}", "DrawEchoB", DateTime.Now.ToString("mm:ss.fff"), _echoCanvas?.GetHashCode());
     }
 
-    private void DrawTrail(SKCanvas skCanvas)
+    private void DrawTrail(object? source, SKCanvas canvas)
     {
-        _trailCanvas ??= skCanvas;
+        _trailCanvas ??= canvas;
         if (_trailCanvas is null) return;
+        Console.WriteLine("{0,20} Called {1} canvas = {2} source = {3}", "DrawTrailA", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode(), source?.GetType());
         UpdateCanvas(_trailCanvas, _trailBitmap, true, _trailColor);
-        Console.WriteLine("{0,20} Called {1} canvas = {2}", "DrawTrail", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode());
+        Console.WriteLine("{0,20} Called {1} canvas = {2}", "DrawTrailB", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode());
     }
 
     // Proper disposal of the bitmap when the control is no longer used

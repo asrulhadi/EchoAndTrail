@@ -22,7 +22,6 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="SkiaSharp" />
     <!-- <PackageReference Include="Skia.Controls.Avalonia" /> -->
     <PackageReference Include="Avalonia.Controls.Skia" />
   </ItemGroup>

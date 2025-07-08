@@ -6,11 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <!-- PropertyGroup>
-    <WasmNativeStrip>true</WasmNativeStrip>
-    <RunAOTCompilation>true</RunAOTCompilation>
-  </PropertyGroup -->
-
   <ItemGroup>
     <PackageReference Include="Avalonia.Browser" />
   </ItemGroup>

@@ -16,7 +16,6 @@
     <PackageVersion Include="Avalonia.Browser" Version="11.3.2" />
     <PackageVersion Include="Avalonia.Android" Version="11.3.2" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageVersion Include="SkiaSharp" Version="2.88.9" />
     <PackageVersion Include="Avalonia.Controls.Skia" Version="11.2.7" />
     <!-- <PackageVersion Include="Skia.Controls.Avalonia" Version="11.3.0.1" /> -->
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.16" />

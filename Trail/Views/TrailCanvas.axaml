@@ -6,16 +6,54 @@
              x:Class="Trail.Views.TrailCanvas">
   <DockPanel>
     <StackPanel DockPanel.Dock="Top" Spacing="5">
-      <Border Height="10" />
+      <Border Height="15" />
       <StackPanel Orientation="Horizontal" Spacing="5">
-        <TextBox>Hello</TextBox>
-        <TextBox>Hello</TextBox>
-        <TextBox>Hello</TextBox>
+        <StackPanel.Styles>
+          <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="0,0,5,0" />
+          </Style>
+        </StackPanel.Styles>
+        <TextBlock Text="Background Color:" />
+        <ComboBox Name="BackgroundColor" Width="130" SelectedIndex="0">
+          <ComboBoxItem Content="Black" Background="Black" />
+          <ComboBoxItem Content="Red" Background="Red" />
+          <ComboBoxItem Content="Green" Background="Green" />
+          <ComboBoxItem Content="Blue" Background="Blue" />
+          <ComboBoxItem Content="Yellow" Background="Yellow" />
+        </ComboBox>
+        <TextBlock Text="Echo Color:" />
+        <ComboBox Name="EchoColor" Width="130" SelectedIndex="0">
+          <ComboBoxItem Content="Red" Background="Red" />
+          <ComboBoxItem Content="Green" Background="Green" />
+          <ComboBoxItem Content="Blue" Background="Blue" />
+          <ComboBoxItem Content="Yellow" Background="Yellow" />
+          <ComboBoxItem Content="Purple" Background="Purple" />
+        </ComboBox>
+        <TextBlock Text="Trail Color:" />
+        <ComboBox Name="TrailColor" Width="130" SelectedIndex="3">
+          <ComboBoxItem Content="Red" Background="Red" />
+          <ComboBoxItem Content="Green" Background="Green" />
+          <ComboBoxItem Content="Blue" Background="Blue" />
+          <ComboBoxItem Content="Yellow" Background="Yellow" />
+          <ComboBoxItem Content="Purple" Background="Purple" />
+        </ComboBox>
+        <TextBlock Text="Trail Length (s):" />
+        <ComboBox Name="TrailLength" Width="65" SelectedIndex="2">
+          <ComboBoxItem Content="0" />
+          <ComboBoxItem Content="1" />
+          <ComboBoxItem Content="3" />
+          <ComboBoxItem Content="5" />
+          <ComboBoxItem Content="10" />
+          <ComboBoxItem Content="20" />
+        </ComboBox>
       </StackPanel>
     </StackPanel>
     <Panel>
       <SKCanvasControl Name="TrailSKCanvas" ZIndex="1"/>
-      <SKCanvasControl Name="EchoSKCanvas" ZIndex="2"/>  
+      <SKCanvasControl Name="EchoSKCanvas" ZIndex="2"/>
     </Panel>
   </DockPanel>
 </UserControl>
