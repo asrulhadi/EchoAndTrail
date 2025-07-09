@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Skia;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Skia;
 using Avalonia.Threading;
 using SkiaSharp;
@@ -19,9 +20,9 @@ public partial class TrailCanvas : UserControl
     private int _circleRadius = 20;
 
     // Colors
-    private SKColor _echoColor = SKColors.Red;
+    private SKColor _echoColor = new SKColor(0xFC, 0xEE, 0x03, 0xFF); // Yellow-ish color
     private SKColor _backgroundColor = SKColors.Black;
-    private SKColor _trailColor = SKColors.Yellow;
+    private SKColor _trailColor = new SKColor(0x63, 0xB5, 0xB5, 0xFF); // Teal-ish color
     private SKColor _fadeToBackgroundColor;
 
     // Timer for updates
@@ -96,7 +97,7 @@ public partial class TrailCanvas : UserControl
         {
             if (BackgroundColor.SelectedItem is ComboBoxItem selectedItem)
             {
-                if (Color.TryParse(selectedItem!.Content!.ToString(), out Color parsedColor))
+                if (selectedItem!.Background is ImmutableSolidColorBrush { Color: Color parsedColor })
                 {
                     _backgroundColor = parsedColor.ToSKColor();
                     Console.WriteLine("Background color set to: {0} {1}", _backgroundColor, parsedColor);
@@ -108,7 +109,7 @@ public partial class TrailCanvas : UserControl
         {
             if (EchoColor.SelectedItem is ComboBoxItem selectedItem)
             {
-                if (Color.TryParse(selectedItem!.Content!.ToString(), out Color parsedColor))
+                if (selectedItem!.Background is ImmutableSolidColorBrush { Color: Color parsedColor })
                 {
                     _echoColor = parsedColor.ToSKColor();
                     Console.WriteLine("Echo color set to: {0} {1}", _echoColor, parsedColor);
@@ -119,7 +120,7 @@ public partial class TrailCanvas : UserControl
         {
             if (TrailColor.SelectedItem is ComboBoxItem selectedItem)
             {
-                if (Color.TryParse(selectedItem!.Content!.ToString(), out Color parsedColor))
+                if (selectedItem!.Background is ImmutableSolidColorBrush { Color: Color parsedColor })
                 {
                     _trailColor = parsedColor.ToSKColor();
                     Console.WriteLine("Trail color set to: {0} {1}", _trailColor, parsedColor);

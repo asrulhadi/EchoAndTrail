@@ -26,22 +26,22 @@
           <ComboBoxItem Content="Black" Background="Black" />
           <ComboBoxItem Content="Red" Background="Red" />
           <ComboBoxItem Content="Green" Background="Green" />
-          <ComboBoxItem Content="Blue" Background="Blue" />
+          <ComboBoxItem Content="Blue" Background="#ff00007b" />
           <ComboBoxItem Content="Yellow" Background="Yellow" />
         </ComboBox>
         <TextBlock Text="Echo Color:" />
-        <ComboBox Name="EchoColor" Width="130" SelectedIndex="0">
+        <ComboBox Name="EchoColor" Width="130" SelectedIndex="3">
           <ComboBoxItem Content="Red" Background="Red" />
           <ComboBoxItem Content="Green" Background="Green" />
           <ComboBoxItem Content="Blue" Background="Blue" />
-          <ComboBoxItem Content="Yellow" Background="Yellow" />
+          <ComboBoxItem Content="Yellow" Background="#fffcee03" />
           <ComboBoxItem Content="Purple" Background="Purple" />
         </ComboBox>
         <TextBlock Text="Trail Color:" />
-        <ComboBox Name="TrailColor" Width="130" SelectedIndex="3">
+        <ComboBox Name="TrailColor" Width="130" SelectedIndex="2">
           <ComboBoxItem Content="Red" Background="Red" />
           <ComboBoxItem Content="Green" Background="Green" />
-          <ComboBoxItem Content="Blue" Background="Blue" />
+          <ComboBoxItem Content="Teal" Background="#ff63b5b5" />
           <ComboBoxItem Content="Yellow" Background="Yellow" />
           <ComboBoxItem Content="Purple" Background="Purple" />
         </ComboBox>
