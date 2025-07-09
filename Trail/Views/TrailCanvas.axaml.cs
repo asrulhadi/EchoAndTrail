@@ -24,6 +24,7 @@ public partial class TrailCanvas : UserControl
     private SKColor _backgroundColor = SKColors.Black;
     private SKColor _trailColor = new SKColor(0x63, 0xB5, 0xB5, 0xFF); // Teal-ish color
     private SKColor _fadeToBackgroundColor;
+    private float[] fadeToBackgroundMatrix;
 
     // Timer for updates
     private int frameTime = 30;     // in miliseconds
@@ -124,6 +125,7 @@ public partial class TrailCanvas : UserControl
                 {
                     _trailColor = parsedColor.ToSKColor();
                     Console.WriteLine("Trail color set to: {0} {1}", _trailColor, parsedColor);
+                    UpdateTrailLengthColor();
                 }
             }
         };
@@ -148,8 +150,10 @@ public partial class TrailCanvas : UserControl
     {
         // calculate alpha Af = 255x(1-(TargetAlpha/InitialAlpha)^(1/N)))
         var noOfFrames = trailLength * 1000 / frameTime;
-        byte Af = (byte)Math.Round(255 * ( 1 - Math.Pow(1.0/255.0, 1.0 / noOfFrames)), 0, MidpointRounding.AwayFromZero);
+        double fadeAmount = 1.0 - Math.Pow(1.0 / 255.0, 1.0 / noOfFrames); // Convert to a value between 0 and 1
+        byte Af = (byte)Math.Round(255 * fadeAmount, 0, MidpointRounding.AwayFromZero);
         _fadeToBackgroundColor = _backgroundColor.WithAlpha(Af); // Semi-transparent to background (alpha 5)
+        fadeToBackgroundMatrix = CreateFadeToBackgroundMatrix((float)fadeAmount);
     }
 
     private void InitializeTrailBitmap()
@@ -185,6 +189,23 @@ public partial class TrailCanvas : UserControl
         Console.WriteLine("{0,20} Called {1} context = {2}", "Render", DateTime.Now.ToString("mm:ss.fff"), context?.GetHashCode());
     }
 
+    private float[] CreateFadeToBackgroundMatrix(float fadeAmount)
+    {
+        float inverseFade = 1 - fadeAmount;  // 1 = full image, 0 = black
+
+        // Normalize target color to 0-1 range
+        float targetR = _backgroundColor.Red / 255f;
+        float targetG = _backgroundColor.Green / 255f;
+        float targetB = _backgroundColor.Blue / 255f;
+
+        return [
+            inverseFade, 0, 0, 0, fadeAmount * targetR,   // Red channel scaled
+            0, inverseFade, 0, 0, fadeAmount * targetG,   // Green channel scaled
+            0, 0, inverseFade, 0, fadeAmount * targetB,   // Blue channel scaled
+            0, 0, 0, 1, 0         // Alpha unchanged
+        ];
+    }
+
     private void DrawTrail(object? source, SKCanvas canvas)
     {
         // Console.WriteLine("{0,20} Called {1} canvas = {2} source = {3}", "DrawTrailA", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode(), canvas.GetHashCode());
@@ -204,25 +225,26 @@ public partial class TrailCanvas : UserControl
             // 1. Apply the fade-to-black layer: This makes old trail parts fade out.
             //    OR clear the bitmap using the background color
             if (fading)
-                using (var fadePaint = new SKPaint { Color = _fadeToBackgroundColor, BlendMode = SKBlendMode.SrcOver })
-                {
-                    drawingCanvas.DrawRect(0, 0, bitmap.Width, bitmap.Height, fadePaint);
-                }
+            {
+                using var paint = new SKPaint();
+                paint.ColorFilter = SKColorFilter.CreateColorMatrix(fadeToBackgroundMatrix);
+                drawingCanvas.DrawBitmap(bitmap, 0, 0, paint);
+            }
             else
                 drawingCanvas.Clear(SKColors.Transparent);
 
             // 2. Draw the new Trail circle: This creates the new "head" of the trail.
-                using (var circlePaint = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Fill })
-                {
-                    // When drawing to the SKBitmap, the coordinates need to be in physical pixels.
-                    // We stored _currentCirclePosition in device-independent pixels, so we need to scale.
-                    double scaling = VisualRoot?.RenderScaling ?? 1.0;
-                    float scaledX = (float)(_currentCirclePosition.X * scaling);
-                    float scaledY = (float)(_currentCirclePosition.Y * scaling);
-                    float scaledRadius = (float)(_circleRadius * scaling);
+            using (var circlePaint = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Fill })
+            {
+                // When drawing to the SKBitmap, the coordinates need to be in physical pixels.
+                // We stored _currentCirclePosition in device-independent pixels, so we need to scale.
+                double scaling = VisualRoot?.RenderScaling ?? 1.0;
+                float scaledX = (float)(_currentCirclePosition.X * scaling);
+                float scaledY = (float)(_currentCirclePosition.Y * scaling);
+                float scaledRadius = (float)(_circleRadius * scaling);
 
-                    drawingCanvas.DrawCircle(scaledX, scaledY, scaledRadius, circlePaint);
-                }
+                drawingCanvas.DrawCircle(scaledX, scaledY, scaledRadius, circlePaint);
+            }
             drawingCanvas.Flush(); // Ensure all drawing commands are executed
             // --- End Core Trail Logic ---
 
