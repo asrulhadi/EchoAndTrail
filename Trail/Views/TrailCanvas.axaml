@@ -64,9 +64,6 @@
         </ComboBox>
       </WrapPanel>
     </StackPanel>
-    <Panel>
-      <SKCanvasControl Name="TrailSKCanvas" ZIndex="1"/>
-      <SKCanvasControl Name="EchoSKCanvas" ZIndex="2"/>
-    </Panel>
+    <SKCanvasControl Name="TrailSKCanvas" />
   </DockPanel>
 </UserControl>
