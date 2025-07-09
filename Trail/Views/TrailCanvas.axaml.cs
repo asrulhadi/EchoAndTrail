@@ -23,8 +23,8 @@ public partial class TrailCanvas : UserControl
     private SKColor _echoColor = new SKColor(0xFC, 0xEE, 0x03, 0xFF); // Yellow-ish color
     private SKColor _backgroundColor = SKColors.Black;
     private SKColor _trailColor = new SKColor(0x63, 0xB5, 0xB5, 0xFF); // Teal-ish color
-    private SKColor _fadeToBackgroundColor;
-    private float[] fadeToBackgroundMatrix;
+    private SKColor _fadeToBackgroundColor = SKColors.Black;
+    private float[] fadeToBackgroundMatrix = [];
 
     // Timer for updates
     private int frameTime = 30;     // in miliseconds
