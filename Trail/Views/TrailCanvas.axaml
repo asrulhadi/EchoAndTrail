@@ -62,6 +62,11 @@
           <ComboBoxItem Content="60" />
           <ComboBoxItem Content="120" />
         </ComboBox>
+        <TextBlock Text="Trail Drawing Method:" />
+        <ComboBox Name="DrawingMethodComboBox" Width="135" SelectedIndex="0">
+          <ComboBoxItem Content="Fading Alpha" />
+          <ComboBoxItem Content="Fading Color" />
+        </ComboBox>
       </WrapPanel>
     </StackPanel>
     <SKCanvasControl Name="TrailSKCanvas" />
