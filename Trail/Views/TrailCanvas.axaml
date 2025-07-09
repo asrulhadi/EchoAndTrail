@@ -6,16 +6,21 @@
              x:Class="Trail.Views.TrailCanvas">
   <DockPanel>
     <StackPanel DockPanel.Dock="Top" Spacing="5">
+      <StackPanel.Styles>
+        <Style Selector="TextBlock">
+          <Setter Property="Foreground" Value="White" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+          <Setter Property="FontSize" Value="14" />
+          <Setter Property="Margin" Value="0,0,5,0" />
+        </Style>
+        <Style Selector="ComboBox">
+          <Setter Property="Margin" Value="0,0,10,0" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+          <Setter Property="FontSize" Value="14" />
+        </Style>
+      </StackPanel.Styles>
       <Border Height="15" />
-      <StackPanel Orientation="Horizontal" Spacing="5">
-        <StackPanel.Styles>
-          <Style Selector="TextBlock">
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Margin" Value="0,0,5,0" />
-          </Style>
-        </StackPanel.Styles>
+      <WrapPanel Orientation="Horizontal" Margin="5">
         <TextBlock Text="Background Color:" />
         <ComboBox Name="BackgroundColor" Width="130" SelectedIndex="0">
           <ComboBoxItem Content="Black" Background="Black" />
@@ -49,7 +54,15 @@
           <ComboBoxItem Content="10" />
           <ComboBoxItem Content="20" />
         </ComboBox>
-      </StackPanel>
+        <TextBlock Text="FPS:" />
+        <ComboBox Name="FpsComboBox" Width="75" SelectedIndex="2">
+          <ComboBoxItem Content="1" />
+          <ComboBoxItem Content="10" />
+          <ComboBoxItem Content="30" />
+          <ComboBoxItem Content="60" />
+          <ComboBoxItem Content="120" />
+        </ComboBox>
+      </WrapPanel>
     </StackPanel>
     <Panel>
       <SKCanvasControl Name="TrailSKCanvas" ZIndex="1"/>
