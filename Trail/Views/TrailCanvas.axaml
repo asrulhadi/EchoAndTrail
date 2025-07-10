@@ -21,6 +21,29 @@
       </StackPanel.Styles>
       <Border Height="15" />
       <WrapPanel Orientation="Horizontal" Margin="5">
+        <TextBlock Text="FPS:" />
+        <ComboBox Name="FpsComboBox" Width="75" SelectedIndex="2">
+          <ComboBoxItem Content="1" />
+          <ComboBoxItem Content="10" />
+          <ComboBoxItem Content="30" />
+          <ComboBoxItem Content="60" />
+        </ComboBox>
+        <TextBlock Text="Trail Length (s):" />
+        <ComboBox Name="TrailLength" Width="65" SelectedIndex="2">
+          <ComboBoxItem Content="0" />
+          <ComboBoxItem Content="1" />
+          <ComboBoxItem Content="3" />
+          <ComboBoxItem Content="5" />
+          <ComboBoxItem Content="10" />
+          <ComboBoxItem Content="20" />
+        </ComboBox>
+        <TextBlock Text="Trail Drawing Method:" />
+        <ComboBox Name="DrawingMethodComboBox" Width="135" SelectedIndex="0">
+          <ComboBoxItem Content="Fading Alpha" />
+          <ComboBoxItem Content="Fading Color" />
+        </ComboBox>
+      </WrapPanel>
+      <WrapPanel Orientation="Horizontal" Margin="5">
         <TextBlock Text="Background Color:" />
         <ComboBox Name="BackgroundColor" Width="130" SelectedIndex="0">
           <ComboBoxItem Content="Black" Background="Black" />
@@ -45,27 +68,12 @@
           <ComboBoxItem Content="Yellow" Background="Yellow" />
           <ComboBoxItem Content="Purple" Background="Purple" />
         </ComboBox>
-        <TextBlock Text="Trail Length (s):" />
-        <ComboBox Name="TrailLength" Width="65" SelectedIndex="2">
-          <ComboBoxItem Content="0" />
-          <ComboBoxItem Content="1" />
-          <ComboBoxItem Content="3" />
-          <ComboBoxItem Content="5" />
-          <ComboBoxItem Content="10" />
-          <ComboBoxItem Content="20" />
-        </ComboBox>
-        <TextBlock Text="FPS:" />
-        <ComboBox Name="FpsComboBox" Width="75" SelectedIndex="2">
-          <ComboBoxItem Content="1" />
-          <ComboBoxItem Content="10" />
-          <ComboBoxItem Content="30" />
-          <ComboBoxItem Content="60" />
-          <ComboBoxItem Content="120" />
-        </ComboBox>
-        <TextBlock Text="Trail Drawing Method:" />
-        <ComboBox Name="DrawingMethodComboBox" Width="135" SelectedIndex="0">
-          <ComboBoxItem Content="Fading Alpha" />
-          <ComboBoxItem Content="Fading Color" />
+      </WrapPanel>
+      <WrapPanel Orientation="Horizontal" Margin="5">
+        <TextBlock Text="Object Movement:" />
+        <ComboBox Name="ObjectMovementComboBox" Width="150" SelectedIndex="0">
+          <ComboBoxItem Content="Random Circle" />
+          <ComboBoxItem Content="Ship Drift" />
         </ComboBox>
       </WrapPanel>
     </StackPanel>

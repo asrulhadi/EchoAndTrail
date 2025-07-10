@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Skia;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Skia;
@@ -15,9 +16,14 @@ public partial class TrailCanvas : UserControl
 {
     private SKBitmap? _trailBitmap; // This bitmap holds the cumulative trail
     private SKBitmap? _echoBitmap; // This bitmap holds the cumulative trail
-    private SKPoint _currentCirclePosition;
+    // private SKPoint _currentCirclePosition;
+    private SKPath _circlePath = SKPath.ParseSvgPathData("M 40 20 A 20 20 90 0 0 0 20 A 20 20 90 0 0 40 20 Z"); // Path for the object to draw
+    private SKPath _shipPath = SKPath.ParseSvgPathData("M 0 50 H 20 V 20 Q 20 10 10 0 Q 0 10 0 20 Z"); // Path for the object to draw
+    private SKPath _objectPath;
     private Random _random;
     private int _circleRadius = 20;
+    private Vector3D _position = new(0, 0, 0); // Initial position of the ship in 3D space
+    private Vector3D shipVelocity = new(0, 0, 0); // Initial velocity of the ship in 3D space
 
     // Colors
     private SKColor _echoColor = new SKColor(0xFC, 0xEE, 0x03, 0xFF); // Yellow-ish color
@@ -34,7 +40,9 @@ public partial class TrailCanvas : UserControl
     // lock to prevent memory violation
     private Object drawLock = new();
 
-    private Action<object?, SKCanvas> DrawTrail = null!; // Action to draw the trail
+    private Action<object?, SKCanvas> DrawTrail = (_,_) => { }; // Action to draw the trail
+
+    private Action UpdateObjectPosition = () => { }; // Action to update the position of the circle
 
     public TrailCanvas()
     {
@@ -70,7 +78,7 @@ public partial class TrailCanvas : UserControl
                 }
                 Console.WriteLine("{0,20} Called {1} trail = {2} echo = {3}", "LayoutB", DateTime.Now.ToString("mm:ss.fff"), _trailBitmap?.GetHashCode(), _echoBitmap?.GetHashCode());
                 // Set initial circle position to center, scaled by render scaling
-                _currentCirclePosition = new SKPoint((float)(Bounds.Width / 2), (float)(Bounds.Height / 2));
+                _position = new Vector3D(Bounds.Width / 2, Bounds.Height / 2, 0); // Initial ship position
             }
         };
 
@@ -161,6 +169,24 @@ public partial class TrailCanvas : UserControl
         };
         DrawTrail = DrawTrailFadeColor; // Assign the drawing action
         TrailSKCanvas.Draw += (s, e) => { lock (drawLock) { DrawTrail(s, e.Canvas); } };
+
+        // display
+        ObjectMovementComboBox.SelectionChanged += (sender, e) =>
+        {
+            if (ObjectMovementComboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                (Action, SKPath) a = (selectedItem.Content?.ToString()) switch
+                {
+                    "Random Circle" => (UpdateCirclePosition, _circlePath), // Use random circle movement
+                    "Ship Drift" => (UpdateShipDriftPosition, _shipPath), // Use ship drift movement
+                    _ => (UpdateCirclePosition, _circlePath), // Default to random circle movement
+                };
+                (UpdateObjectPosition, _objectPath) = a; // Set the update action
+                Console.WriteLine("Object movement set to: {0}", selectedItem.Content);
+            }
+        };
+        _objectPath = _circlePath; // Default to circle path
+        UpdateObjectPosition = UpdateCirclePosition;
     }
 
     private void UpdateTrailLengthColor()
@@ -180,22 +206,90 @@ public partial class TrailCanvas : UserControl
         if (_echoBitmap is { }) new SKCanvas(_echoBitmap).Clear(_backgroundColor);
     }
 
+    private void UpdateShipDriftPosition()
+    {
+        static double NormalizeAngle(double angle)
+        {
+            while (angle > Math.PI) angle -= 2 * Math.PI;
+            while (angle < -Math.PI) angle += 2 * Math.PI;
+            return angle;
+        }
+
+        // Ship and environment parameters
+        const double m = 50000.0;         // mass (kg)
+        const double I_z = 8e6;           // moment of inertia (kg*m^2)
+        const double X_u = 80000.0;       // surge damping (N/(m/s))
+        const double Y_v = 100000.0;      // sway damping (N/(m/s))
+        const double N_r = 5e6;           // yaw damping (Nm/(rad/s))
+        const double N_delta = 3e6;       // asymmetry yaw restoring moment (Nm)
+
+        // Current in global frame (m/s)
+        const double U_x = -0.5;  //1.5;           // eastward
+        const double U_y = 0.5;//0.5;           // northward
+
+        // Initial state variables
+        double u = shipVelocity.X, v = shipVelocity.Y, r = shipVelocity.Z;           // velocities in body frame
+        double x = _position.X, y = _position.Y, psi = _position.Z;         // position and heading in global frame
+
+        double dt = 1;                      // timestep (s)
+                                            // int steps = 1000;
+
+        double theta_current = Math.Atan2(U_x, U_y); // direction of current
+
+        // Transform current to body frame
+        double cosPsi = Math.Cos(psi);
+        double sinPsi = Math.Sin(psi);
+        double u_c = cosPsi * U_x + sinPsi * U_y;
+        double v_c = -sinPsi * U_x + cosPsi * U_y;
+
+        // Relative velocities
+        double u_rel = u - u_c;
+        double v_rel = v - v_c;
+
+        // Dynamics equations (Euler integration)
+        double du = (v * r - (X_u / m) * u_rel) * dt;
+        double dv = (-u * r - (Y_v / m) * v_rel) * dt;
+        double dr = ((-N_r * r + N_delta * Math.Sin(psi - theta_current)) / I_z) * dt;
+
+        u += du;
+        v += dv;
+        r += dr;
+        psi += r * dt;
+
+        // Normalize heading angle
+        psi = NormalizeAngle(psi);
+
+        // Kinematic equations (global position update)
+        double dx = (u * cosPsi - v * sinPsi) * dt;
+        double dy = (u * sinPsi + v * cosPsi) * dt;
+
+        x += dx;
+        y += dy;
+
+        // Update the current circle position based on the ship's position
+        _position = new Vector3D(x, y, psi);
+        shipVelocity = new Vector3D(u, v, r);
+    }
+
     private void UpdateCirclePosition()
     {
-        float moveAmount = _circleRadius; // Max pixels to move per step (in device-independent pixels)
+        float radius = _circlePath.Bounds.Width / 2; // Radius of the circle in device-independent pixels
+        float moveAmount = radius / 2; // Max pixels to move per step (in device-independent pixels)
 
-        _currentCirclePosition.X += (float)(_random.NextDouble() * 2 - 1) * moveAmount;
-        _currentCirclePosition.Y += (float)(_random.NextDouble() * 2 - 1) * moveAmount;
+        var _x = _position.X + (_random.NextDouble() * 2 - 1) * moveAmount;
+        var _y = _position.Y + (_random.NextDouble() * 2 - 1) * moveAmount;
 
         // Clamp position to stay within control bounds (device-independent pixels)
-        _currentCirclePosition.X = Math.Max(_circleRadius, Math.Min((float)Bounds.Width - _circleRadius, _currentCirclePosition.X));
-        _currentCirclePosition.Y = Math.Max(_circleRadius, Math.Min((float)Bounds.Height - _circleRadius, _currentCirclePosition.Y));
+        _x = Math.Max(radius, Math.Min((float)Bounds.Width - radius, _x));
+        _y = Math.Max(radius, Math.Min((float)Bounds.Height - radius, _y));
+
+        _position = new Vector3D(_x, _y, 0); // Update position in 3D space
     }
 
     private void AnimationTimer_Tick(object? sender, EventArgs e)
     {
         // Console.WriteLine("{0,20} Called {1} canvas = {2} - {3}", "TimerTickA", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode(), _echoCanvas?.GetHashCode());
-        UpdateCirclePosition();
+        UpdateObjectPosition?.Invoke();
         TrailSKCanvas.InvalidateVisual();   // Request a redraw of this control
         // Console.WriteLine("{0,20} Called {1} canvas = {2} - {3}", "TimerTickB", DateTime.Now.ToString("mm:ss.fff"), _trailCanvas?.GetHashCode(), _echoCanvas?.GetHashCode());
     }
@@ -257,11 +351,16 @@ public partial class TrailCanvas : UserControl
                 // When drawing to the SKBitmap, the coordinates need to be in physical pixels.
                 // We stored _currentCirclePosition in device-independent pixels, so we need to scale.
                 double scaling = VisualRoot?.RenderScaling ?? 1.0;
-                float scaledX = (float)(_currentCirclePosition.X * scaling);
-                float scaledY = (float)(_currentCirclePosition.Y * scaling);
+                float scaledX = (float)(_position.X * scaling);
+                float scaledY = (float)(_position.Y * scaling);
                 float scaledRadius = (float)(_circleRadius * scaling);
 
-                drawingCanvas.DrawCircle(scaledX, scaledY, scaledRadius, circlePaint);
+                // drawingCanvas.DrawCircle(scaledX, scaledY, scaledRadius, circlePaint);
+                drawingCanvas.Save();
+                drawingCanvas.Translate(scaledX, scaledY); // Move to the circle position
+                drawingCanvas.RotateRadians((float)_position.Z); // Rotate by the angle in radians
+                drawingCanvas.DrawPath(_objectPath, circlePaint); // Draw the object path if needed
+                drawingCanvas.Restore();
             }
             drawingCanvas.Flush(); // Ensure all drawing commands are executed
             // --- End Core Trail Logic ---
@@ -308,8 +407,8 @@ public partial class TrailCanvas : UserControl
                 // When drawing to the SKBitmap, the coordinates need to be in physical pixels.
                 // We stored _currentCirclePosition in device-independent pixels, so we need to scale.
                 double scaling = VisualRoot?.RenderScaling ?? 1.0;
-                float scaledX = (float)(_currentCirclePosition.X * scaling);
-                float scaledY = (float)(_currentCirclePosition.Y * scaling);
+                float scaledX = (float)(_position.X * scaling);
+                float scaledY = (float)(_position.Y * scaling);
                 float scaledRadius = (float)(_circleRadius * scaling);
 
                 drawingCanvas.DrawCircle(scaledX, scaledY, scaledRadius, circlePaint);
